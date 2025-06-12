@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Online Chess</title>
+  <style>
+    #board { width: 400px; margin: 20px auto; }
+    body { font-family: sans-serif; text-align: center; }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.css" />
+</head>
+<body>
+  <h1>Online Chess Game</h1>
+  <input type="text" id="roomId" placeholder="Enter room ID" />
+  <button onclick="joinRoom()">Join Room</button>
+  <div id="board"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io('https://your-railway-app.up.railway.app'); // Замените на ваш URL
+    let board = null;
+    const game = new Chess();
+    let currentRoom = null;
+
+    function joinRoom() {
+      currentRoom = document.getElementById('roomId').value;
+      if (!currentRoom) return alert('Enter a room ID');
+      socket.emit('joinRoom', currentRoom);
+    }
+
+    socket.on('move', (move) => {
+      game.move(move);
+      board.position(game.fen());
+    });
+
+    socket.on('roomUpdate', (users) => {
+      console.log(`Users in room:`, users);
+    });
+
+    function onDrop(source, target) {
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (move === null) return 'snapback';
+      socket.emit('move', { roomId: currentRoom, move });
+    }
+
+    board = Chessboard('board', {
+      draggable: true,
+      position: 'start',
+      onDrop: onDrop
+    });
+  </script>
+</body>
+</html>
