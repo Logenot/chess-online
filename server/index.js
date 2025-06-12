@@ -4,14 +4,26 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
+
+// Разрешаем CORS только для фронтенда
+const allowedOrigin = 'https://chess-online-tawny.vercel.app';
+
+app.use(cors({
+  origin: allowedOrigin,
+  methods: ['GET', 'POST'],
+  credentials: true,
+}));
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: '*'
+    origin: allowedOrigin,
+    methods: ['GET', 'POST'],
+    credentials: true,
   }
 });
 
-app.use(cors());
 app.get('/', (req, res) => {
   res.send('Chess backend is running');
 });
