@@ -2,53 +2,73 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Online Chess</title>
+  <title>Online Chess Game</title>
+  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
   <style>
-    #board { width: 400px; margin: 20px auto; }
-    body { font-family: sans-serif; text-align: center; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #board {
+      width: 400px;
+      margin: 20px auto;
+    }
   </style>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.css" />
 </head>
 <body>
   <h1>Online Chess Game</h1>
-  <input type="text" id="roomId" placeholder="Enter room ID" />
-  <button onclick="joinRoom()">Join Room</button>
+  <input type="text" id="roomInput" placeholder="Enter room ID" />
+  <button id="joinRoom">Join Room</button>
+
   <div id="board"></div>
 
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard-1.0.0.min.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
-    const socket = io('https://chess-online-production-a141.up.railway.app/'); // Замените на ваш URL
-    let board = null;
+    // 🔧 Укажи здесь свой backend URL на Railway:
+    const socket = io('https://your-backend-name.up.railway.app'); // ← ЗАМЕНИ ЭТО
+
+    let currentRoom;
+    const boardEl = document.getElementById('board');
+    const roomInput = document.getElementById('roomInput');
+    const joinRoomBtn = document.getElementById('joinRoom');
     const game = new Chess();
-    let currentRoom = null;
 
-    function joinRoom() {
-      currentRoom = document.getElementById('roomId').value;
-      if (!currentRoom) return alert('Enter a room ID');
-      socket.emit('joinRoom', currentRoom);
-    }
-
-    socket.on('move', (move) => {
-      game.move(move);
-      board.position(game.fen());
-    });
-
-    socket.on('roomUpdate', (users) => {
-      console.log(`Users in room:`, users);
-    });
-
-    function onDrop(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (move === null) return 'snapback';
-      socket.emit('move', { roomId: currentRoom, move });
-    }
-
-    board = Chessboard('board', {
+    const board = Chessboard(boardEl, {
       draggable: true,
       position: 'start',
-      onDrop: onDrop
+      onDrop: handleMove,
+    });
+
+    function handleMove(source, target, piece, newPos, oldPos, orientation) {
+      const move = game.move({
+        from: source,
+        to: target,
+        promotion: 'q'
+      });
+
+      if (move === null) return 'snapback';
+
+      board.position(game.fen());
+
+      socket.emit('move', {
+        room: currentRoom,
+        move: { from: source, to: target }
+      });
+    }
+
+    joinRoomBtn.onclick = function () {
+      const room = roomInput.value.trim();
+      if (!room) return alert('Enter room ID');
+      currentRoom = room;
+      socket.emit('joinRoom', room);
+    };
+
+    socket.on('move', ({ from, to }) => {
+      game.move({ from, to, promotion: 'q' });
+      board.position(game.fen());
     });
   </script>
 </body>
