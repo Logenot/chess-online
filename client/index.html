@@ -1,33 +1,4 @@
 <!DOCTYPE html>
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');  // импортируем cors
-
-const app = express();
-
-app.use(cors()); // добавляем middleware cors, разрешая все источники
-
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: '*',  // разрешаем подключения с любого домена (лучше заменить на домен фронтенда)
-    methods: ['GET', 'POST']
-  }
-});
-
-app.get('/', (req, res) => {
-  res.send('Chess backend is running');
-});
-
-io.on('connection', (socket) => {
-  // твоя логика по комнатам и ходам
-});
-
-server.listen(process.env.PORT || 3000, () => {
-  console.log('Server started');
-});
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -56,6 +27,35 @@ server.listen(process.env.PORT || 3000, () => {
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"></script>
   <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
+    const express = require('express');
+    const http = require('http');
+    const { Server } = require('socket.io');
+    const cors = require('cors');  // импортируем cors
+
+    const app = express();
+
+    app.use(cors()); // добавляем middleware cors, разрешая все источники
+
+    const server = http.createServer(app);
+
+    const io = new Server(server, {
+      cors: {
+        origin: '*',  // разрешаем подключения с любого домена (лучше заменить на домен фронтенда)
+        methods: ['GET', 'POST']
+      }
+    });
+
+    app.get('/', (req, res) => {
+      res.send('Chess backend is running');
+    });
+
+    io.on('connection', (socket) => {
+      // твоя логика по комнатам и ходам
+    });
+
+    server.listen(process.env.PORT || 3000, () => {
+      console.log('Server started');
+    });
     // 🔧 Укажи здесь свой backend URL на Railway:
     const socket = io('https://your-backend-name.up.railway.app'); // ← ЗАМЕНИ ЭТО
 
