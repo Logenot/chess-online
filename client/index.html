@@ -3,37 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <title>Online Chess Game</title>
-  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <!-- chessboard.css -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/css/chessboard-1.0.0.min.css"
+  />
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    #board {
-      width: 400px;
-      margin: 20px auto;
-    }
+    body { font-family: sans-serif; text-align: center; padding: 20px }
+    #board { width: 400px; margin: 20px auto }
   </style>
 </head>
 <body>
   <h1>Online Chess Game</h1>
   <input type="text" id="roomInput" placeholder="Enter room ID" />
   <button id="joinRoom">Join Room</button>
-
   <div id="board"></div>
 
+  <!-- Подключаем socket.io -->
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <!-- chess.js (версия 0.10.3, чтобы global Chess был точно доступен) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <!-- chessboard.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
 
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
-    const game       = new Chess();
-    const boardEl    = document.getElementById('board');
-    const roomInput  = document.getElementById('roomInput');
-    const joinRoomBtn= document.getElementById('joinRoom');
+    const game        = new Chess();
+    const boardEl     = document.getElementById('board');
+    const roomInput   = document.getElementById('roomInput');
+    const joinRoomBtn = document.getElementById('joinRoom');
 
     const board = Chessboard(boardEl, {
       draggable: true,
@@ -43,7 +42,7 @@
 
     function handleMove(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (move === null) return 'snapback';
+      if (!move) return 'snapback';
       board.position(game.fen());
       socket.emit('move', {
         roomId: currentRoom,
@@ -63,6 +62,5 @@
       board.position(game.fen());
     });
   </script>
-
 </body>
 </html>
