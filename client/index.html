@@ -35,9 +35,8 @@
         draggable: true,
         position: 'start',
         onDrop: handleMove,
-        // Явно указываем путь к изображениям фигур
-        pieceTheme: piece => 
-          `https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/img/chesspieces/wikipedia/${piece}.png`
+        // Рабочие ссылки на изображения фигур
+        pieceTheme: piece => `img/chesspieces/${piece}.png`
       });
     });
 
