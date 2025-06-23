@@ -24,17 +24,16 @@
   <div id="board"></div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/1.0.0/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-  <script>
-    // 🔧 Укажи здесь свой backend URL на Railway:
-    const socket = io('chess-online-production-79dd.up.railway.app'); // ← ЗАМЕНИ ЭТО
 
+  <script>
+    const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
-    const boardEl = document.getElementById('board');
-    const roomInput = document.getElementById('roomInput');
-    const joinRoomBtn = document.getElementById('joinRoom');
-    const game = new Chess();
+    const game       = new Chess();
+    const boardEl    = document.getElementById('board');
+    const roomInput  = document.getElementById('roomInput');
+    const joinRoomBtn= document.getElementById('joinRoom');
 
     const board = Chessboard(boardEl, {
       draggable: true,
@@ -42,24 +41,17 @@
       onDrop: handleMove,
     });
 
-    function handleMove(source, target, piece, newPos, oldPos, orientation) {
-      const move = game.move({
-        from: source,
-        to: target,
-        promotion: 'q'
-      });
-
+    function handleMove(source, target) {
+      const move = game.move({ from: source, to: target, promotion: 'q' });
       if (move === null) return 'snapback';
-
       board.position(game.fen());
-
       socket.emit('move', {
-        room: currentRoom,
+        roomId: currentRoom,
         move: { from: source, to: target }
       });
     }
 
-    joinRoomBtn.onclick = function () {
+    joinRoomBtn.onclick = () => {
       const room = roomInput.value.trim();
       if (!room) return alert('Enter room ID');
       currentRoom = room;
@@ -71,5 +63,6 @@
       board.position(game.fen());
     });
   </script>
+
 </body>
 </html>
