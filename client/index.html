@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Online Chess Game</title>
-  <!-- Обновленная ссылка на CSS chessboard -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
@@ -19,28 +18,26 @@
   <button id="joinRoom">Join Room</button>
   <div id="board"></div>
 
-  <!-- Подключаем socket.io -->
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <!-- Подключаем jQuery -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <!-- chess.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <!-- Обновленная ссылка на chessboard.js -->
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
-    const game        = new Chess();
-    const roomInput   = document.getElementById('roomInput');
+    const game = new Chess();
+    const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
 
-    // Инициализируем доску после загрузки всех скриптов
     document.addEventListener('DOMContentLoaded', () => {
       window.board = Chessboard('board', {
         draggable: true,
         position: 'start',
-        onDrop: handleMove
+        onDrop: handleMove,
+        // Явно указываем путь к изображениям фигур
+        pieceTheme: piece => 
+          `https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/img/chesspieces/wikipedia/${piece}.png`
       });
     });
 
