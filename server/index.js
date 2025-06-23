@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 // Разрешаем CORS только для фронтенда
-const allowedOrigin = 'https://chess-online-tawny.vercel.app';
+const allowedOrigin = 'https://chess-online-one.vercel.app';
 
 app.use(cors({
   origin: allowedOrigin,
