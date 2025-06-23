@@ -21,7 +21,9 @@
 
   <!-- Подключаем socket.io -->
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <!-- chess.js (версия 0.10.3, чтобы global Chess был точно доступен) -->
+  <!-- Подключаем jQuery (обязательно для chessboard.js) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- chess.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <!-- chessboard.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
@@ -34,7 +36,7 @@
     const roomInput   = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
 
-    const board = Chessboard(boardEl, {
+    const board = Chessboard('board', { // Используем ID элемента напрямую
       draggable: true,
       position: 'start',
       onDrop: handleMove,
