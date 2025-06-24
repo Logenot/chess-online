@@ -103,7 +103,9 @@
     // Leaderboard
     showLbBtn.onclick = async () => {
       try {
-        const res = await fetch('/leaderboard');
+        const res = await fetch('https://chess-online-production-79dd.up.railway.app/leaderboard', {
+  	  credentials: 'include'
+	});
         const data = await res.json(); // [{nickname, wins, totalGames}]
         lbBody.innerHTML = '';
         data.slice(0,10).forEach((p, i) => {
