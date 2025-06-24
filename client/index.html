@@ -10,13 +10,34 @@
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px }
     #board { width: 400px; margin: 20px auto }
+    #overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      color: white; display: flex;
+      align-items: center; justify-content: center;
+      flex-direction: column; font-size: 2rem;
+      visibility: hidden;
+    }
+    #overlay button {
+      margin-top: 20px; padding: 10px 20px; font-size: 1rem;
+      cursor: pointer;
+    }
+    #lobby { margin-bottom: 20px }
   </style>
 </head>
 <body>
   <h1>Online Chess Game</h1>
-  <input type="text" id="roomInput" placeholder="Enter room ID" />
-  <button id="joinRoom">Join Room</button>
+  <div id="lobby">
+    <input type="text" id="roomInput" placeholder="Enter room ID" />
+    <button id="joinRoom">Join Room</button>
+  </div>
   <div id="board"></div>
+
+  <div id="overlay">
+    <div id="resultText"></div>
+    <button id="returnBtn">Return to Lobby</button>
+  </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -29,15 +50,31 @@
     let playerColor = null; // 'white' или 'black'
     const game = new Chess();
 
+    const lobbyDiv = document.getElementById('lobby');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
+    const overlay = document.getElementById('overlay');
+    const resultText = document.getElementById('resultText');
+    const returnBtn = document.getElementById('returnBtn');
+
+    joinRoomBtn.onclick = () => {
+      const room = roomInput.value.trim();
+      if (!room) return alert('Enter room ID');
+      currentRoom = room;
+      socket.emit('joinRoom', room);
+    };
+
+    returnBtn.onclick = () => {
+      // Сброс интерфейса
+      overlay.style.visibility = 'hidden';
+      lobbyDiv.style.display = 'block';
+      document.getElementById('board').innerHTML = '';
+      playerColor = null;
+      game.reset();
+    };
 
     function initBoard() {
-      // очищаем контейнер доски
-      const boardContainer = document.getElementById('board');
-      boardContainer.innerHTML = '';
-
-      // создаём новую доску
+      document.getElementById('board').innerHTML = '';
       window.board = Chessboard('board', {
         draggable: true,
         orientation: playerColor,
@@ -54,38 +91,46 @@
       });
     }
 
+    function checkGameOver() {
+      if (!game.game_over()) return;
+      let text;
+      if (game.in_checkmate()) {
+        // Если в мат попал текущий игрок - он проиграл
+        text = game.turn() === (playerColor[0])
+          ? 'You are checkmated! You Lose.'
+          : 'Checkmate! You Win!';
+      } else {
+        text = 'Game Over';
+      }
+      resultText.textContent = text;
+      overlay.style.visibility = 'visible';
+    }
+
     function handleMove(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
       if (!move) return 'snapback';
       window.board.position(game.fen());
-      socket.emit('move', {
-        roomId: currentRoom,
-        move: { from: source, to: target }
-      });
+      socket.emit('move', { roomId: currentRoom, move: { from: source, to: target } });
+      checkGameOver();
     }
 
-    joinRoomBtn.onclick = () => {
-      const room = roomInput.value.trim();
-      if (!room) return alert('Enter room ID');
-      currentRoom = room;
-      socket.emit('joinRoom', room);
-    };
-
     socket.on('roomUpdate', players => {
-      const myId = socket.id;
-      const idx = players.indexOf(myId);
+      const idx = players.indexOf(socket.id);
       if (idx === 0) playerColor = 'white';
       else if (idx === 1) playerColor = 'black';
       else {
         playerColor = null;
         alert('Комната заполнена — вы в режиме наблюдения');
+        return;
       }
+      lobbyDiv.style.display = 'none';
       initBoard();
     });
 
     socket.on('move', ({ from, to }) => {
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
+      checkGameOver();
     });
   </script>
 </body>
