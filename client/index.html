@@ -160,6 +160,22 @@
       }
       resultText.textContent = text;
       overlay.style.visibility = 'visible';
+      const me = socket.id;
+      const opponent = playersInfo.find(p => p.id !== me);
+      const winnerNick = game.in_checkmate()
+        ? (game.turn() === playerColor[0] ? opponent.nickname : nickname)
+        : null;
+      const loserNick = game.in_checkmate()
+        ? (game.turn() === playerColor[0] ? nickname : opponent.nickname)
+        : null;
+    
+      if (winnerNick && loserNick) {
+        socket.emit('gameOver', {
+          roomId: currentRoom,
+          winner:   winnerNick,
+          loser:    loserNick
+        });
+      }
     }
 
     // Handle move
