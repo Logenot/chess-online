@@ -9,7 +9,8 @@
   />
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px }
-    #board { width: 400px; margin: 20px auto }
+    #board { width: 400px; margin: 20px auto; opacity: 0.5; cursor: not-allowed; }
+    #board.active { opacity: 1; cursor: default; }
     .modal { 
       display: none; 
       position: fixed; 
@@ -30,6 +31,7 @@
     .player-info { margin: 10px 0; font-weight: bold }
     .rating-list { text-align: left; margin-top: 15px }
     .rating-item { padding: 5px 0; border-bottom: 1px solid #eee }
+    .disabled { opacity: 0.5; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -42,20 +44,22 @@
   </div>
   
   <!-- Форма ввода комнаты -->
-  <input type="text" id="roomInput" placeholder="Enter room ID" />
-  <button id="joinRoom">Join Room</button>
+  <div id="roomSection">
+    <input type="text" id="roomInput" placeholder="Enter room ID" />
+    <button id="joinRoom">Join Room</button>
+  </div>
   
   <!-- Кнопка рейтинга -->
   <button id="showRating" style="margin-top: 10px">Show Rating</button>
   
-  <!-- Шахматная доска -->
-  <div id="board"></div>
+  <!-- Шахматная доска (изначально заблокирована) -->
+  <div id="board" class="disabled"></div>
   
   <!-- Модальное окно для никнейма -->
   <div id="nicknameModal" class="modal">
     <div class="modal-content">
       <h3>Enter Your Nickname</h3>
-      <input type="text" id="nicknameInput" placeholder="Your nickname" />
+      <input type="text" id="nicknameInput" placeholder="Your nickname" autocomplete="off" />
       <button id="saveNickname">Save</button>
     </div>
   </div>
@@ -84,6 +88,7 @@
     const game = new Chess();
     
     // DOM элементы
+    const roomSection = document.getElementById('roomSection');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
     const playerNameEl = document.getElementById('playerName');
@@ -95,19 +100,26 @@
     const saveNickBtn = document.getElementById('saveNickname');
     const ratingList = document.getElementById('ratingList');
     const closeRatingBtn = document.getElementById('closeRating');
+    const boardEl = document.getElementById('board');
 
     // Инициализация никнейма
     playerNameEl.textContent = playerNickname;
 
-    // Показать модалку для никнейма при первом посещении
+    // Блокируем элементы, пока не введен никнейм
     if (!localStorage.getItem('chessNickname')) {
       nicknameModal.style.display = 'flex';
+      roomSection.classList.add('disabled');
+      showRatingBtn.classList.add('disabled');
+    } else {
+      // Если никнейм есть, активируем поле ввода комнаты
+      roomSection.classList.remove('disabled');
+      showRatingBtn.classList.remove('disabled');
     }
 
-    // Инициализация шахматной доски
+    // Инициализация шахматной доски (заблокирована)
     document.addEventListener('DOMContentLoaded', () => {
       window.board = Chessboard('board', {
-        draggable: true,
+        draggable: false, // Изначально заблокирована
         position: 'start',
         onDrop: handleMove,
         pieceTheme: piece => `img/chesspieces/${piece}.png`
@@ -122,10 +134,19 @@
 
     saveNickBtn.onclick = () => {
       const nickname = nicknameInput.value.trim() || 'Guest';
+      if (nickname.length > 20) {
+        alert('Nickname is too long (max 20 characters)');
+        return;
+      }
+      
       playerNickname = nickname;
       playerNameEl.textContent = nickname;
       localStorage.setItem('chessNickname', nickname);
       nicknameModal.style.display = 'none';
+      
+      // Активируем элементы после ввода никнейма
+      roomSection.classList.remove('disabled');
+      showRatingBtn.classList.remove('disabled');
     };
 
     showRatingBtn.onclick = () => {
@@ -147,6 +168,10 @@
         roomId: room,
         nickname: playerNickname
       });
+      
+      // Активируем доску после присоединения к комнате
+      boardEl.classList.remove('disabled');
+      window.board.draggable(true);
     };
 
     function handleMove(source, target) {
