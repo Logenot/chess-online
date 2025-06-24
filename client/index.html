@@ -9,73 +9,15 @@
   />
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px }
-    #board { width: 400px; margin: 20px auto; opacity: 0.5; cursor: not-allowed; }
-    #board.active { opacity: 1; cursor: default; }
-    .modal { 
-      display: none; 
-      position: fixed; 
-      top: 0; left: 0; 
-      width: 100%; height: 100%; 
-      background: rgba(0,0,0,0.7); 
-      z-index: 100; 
-      justify-content: center; 
-      align-items: center; 
-    }
-    .modal-content { 
-      background: white; 
-      padding: 20px; 
-      border-radius: 10px; 
-      max-width: 400px; 
-      width: 100% 
-    }
-    .player-info { margin: 10px 0; font-weight: bold }
-    .rating-list { text-align: left; margin-top: 15px }
-    .rating-item { padding: 5px 0; border-bottom: 1px solid #eee }
-    .disabled { opacity: 0.5; pointer-events: none; }
+    #board { width: 400px; margin: 20px auto }
   </style>
 </head>
 <body>
   <h1>Online Chess Game</h1>
-  
-  <!-- Никнейм и информация об игроке -->
-  <div class="player-info">
-    <span id="playerName">Guest</span>
-    <button id="changeNickname">Change Nickname</button>
-  </div>
-  
-  <!-- Форма ввода комнаты -->
-  <div id="roomSection">
-    <input type="text" id="roomInput" placeholder="Enter room ID" />
-    <button id="joinRoom">Join Room</button>
-  </div>
-  
-  <!-- Кнопка рейтинга -->
-  <button id="showRating" style="margin-top: 10px">Show Rating</button>
-  
-  <!-- Шахматная доска (изначально заблокирована) -->
-  <div id="board" class="disabled"></div>
-  
-  <!-- Модальное окно для никнейма -->
-  <div id="nicknameModal" class="modal">
-    <div class="modal-content">
-      <h3>Enter Your Nickname</h3>
-      <input type="text" id="nicknameInput" placeholder="Your nickname" autocomplete="off" />
-      <button id="saveNickname">Save</button>
-    </div>
-  </div>
-  
-  <!-- Модальное окно для рейтинга -->
-  <div id="ratingModal" class="modal">
-    <div class="modal-content">
-      <h3>Top Players Rating</h3>
-      <div id="ratingList" class="rating-list">
-        Loading rating...
-      </div>
-      <button id="closeRating">Close</button>
-    </div>
-  </div>
+  <input type="text" id="roomInput" placeholder="Enter room ID" />
+  <button id="joinRoom">Join Room</button>
+  <div id="board"></div>
 
-  <!-- Подключение библиотек -->
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -84,160 +26,41 @@
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
-    let playerNickname = localStorage.getItem('chessNickname') || 'Guest';
     const game = new Chess();
-    
-    // DOM элементы
-    const roomSection = document.getElementById('roomSection');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
-    const playerNameEl = document.getElementById('playerName');
-    const changeNickBtn = document.getElementById('changeNickname');
-    const showRatingBtn = document.getElementById('showRating');
-    const nicknameModal = document.getElementById('nicknameModal');
-    const ratingModal = document.getElementById('ratingModal');
-    const nicknameInput = document.getElementById('nicknameInput');
-    const saveNickBtn = document.getElementById('saveNickname');
-    const ratingList = document.getElementById('ratingList');
-    const closeRatingBtn = document.getElementById('closeRating');
-    const boardEl = document.getElementById('board');
 
-    // Инициализация никнейма
-    playerNameEl.textContent = playerNickname;
-
-    // Блокируем элементы, пока не введен никнейм
-    if (!localStorage.getItem('chessNickname')) {
-      nicknameModal.style.display = 'flex';
-      roomSection.classList.add('disabled');
-      showRatingBtn.classList.add('disabled');
-    } else {
-      // Если никнейм есть, активируем поле ввода комнаты
-      roomSection.classList.remove('disabled');
-      showRatingBtn.classList.remove('disabled');
-    }
-
-    // Инициализация шахматной доски (заблокирована)
     document.addEventListener('DOMContentLoaded', () => {
       window.board = Chessboard('board', {
-        draggable: false, // Изначально заблокирована
+        draggable: true,
         position: 'start',
         onDrop: handleMove,
+        // Рабочие ссылки на изображения фигур
         pieceTheme: piece => `img/chesspieces/${piece}.png`
       });
     });
 
-    // Обработчики событий
-    changeNickBtn.onclick = () => {
-      nicknameInput.value = playerNickname;
-      nicknameModal.style.display = 'flex';
-    };
-
-    saveNickBtn.onclick = () => {
-      const nickname = nicknameInput.value.trim() || 'Guest';
-      if (nickname.length > 20) {
-        alert('Nickname is too long (max 20 characters)');
-        return;
-      }
-      
-      playerNickname = nickname;
-      playerNameEl.textContent = nickname;
-      localStorage.setItem('chessNickname', nickname);
-      nicknameModal.style.display = 'none';
-      
-      // Активируем элементы после ввода никнейма
-      roomSection.classList.remove('disabled');
-      showRatingBtn.classList.remove('disabled');
-    };
-
-    showRatingBtn.onclick = () => {
-      ratingModal.style.display = 'flex';
-      socket.emit('getRating');
-    };
-
-    closeRatingBtn.onclick = () => {
-      ratingModal.style.display = 'none';
-    };
+    function handleMove(source, target) {
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (!move) return 'snapback';
+      window.board.position(game.fen());
+      socket.emit('move', {
+        roomId: currentRoom,
+        move: { from: source, to: target }
+      });
+    }
 
     joinRoomBtn.onclick = () => {
       const room = roomInput.value.trim();
       if (!room) return alert('Enter room ID');
       currentRoom = room;
-      
-      // Отправляем никнейм вместе с запросом на вход в комнату
-      socket.emit('joinRoom', { 
-        roomId: room,
-        nickname: playerNickname
-      });
-      
-      // Активируем доску после присоединения к комнате
-      boardEl.classList.remove('disabled');
-      board.destroy();
-      board = Chessboard('board', {
-        draggable: true, // Теперь разрешено перемещение
-        position: game.fen(),
-        onDrop: handleMove,
-        pieceTheme: piece => `img/chesspieces/${piece}.png`
-      });
+      socket.emit('joinRoom', room);
     };
 
-    function handleMove(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (!move) return 'snapback';
-      
-      window.board.position(game.fen());
-      
-      // Отправляем ход с указанием комнаты и никнейма
-      socket.emit('move', {
-        roomId: currentRoom,
-        move: { from: source, to: target },
-        nickname: playerNickname
-      });
-      
-      // Проверяем окончание игры
-      if (game.isGameOver()) {
-        const winner = game.turn() === 'w' ? 'black' : 'white';
-        socket.emit('gameOver', {
-          roomId: currentRoom,
-          winner: playerNickname
-        });
-      }
-    }
-
-    // Обработка входящих событий
     socket.on('move', ({ from, to }) => {
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
     });
-
-    socket.on('rating', (topPlayers) => {
-      if (topPlayers.length === 0) {
-        ratingList.innerHTML = '<div>No players yet</div>';
-        return;
-      }
-      
-      let html = '';
-      topPlayers.forEach((player, index) => {
-        html += `
-          <div class="rating-item">
-            ${index + 1}. ${player.nickname} - ${player.wins} wins
-          </div>
-        `;
-      });
-      ratingList.innerHTML = html;
-    });
-
-    // Обработка окончания игры
-    socket.on('gameOver', (winner) => {
-      alert(`Game over! Winner: ${winner}`);
-      game.reset();
-      window.board.position('start');
-    });
-
-    // Закрытие модалок по клику вне области
-    window.onclick = (event) => {
-      if (event.target === nicknameModal) nicknameModal.style.display = 'none';
-      if (event.target === ratingModal) ratingModal.style.display = 'none';
-    };
   </script>
 </body>
 </html>
