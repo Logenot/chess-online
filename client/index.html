@@ -3,80 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <title>Online Chess Game</title>
-  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+  />
   <style>
     body { font-family: sans-serif; text-align: center; padding: 20px }
     #board { width: 400px; margin: 20px auto }
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-    }
-    .modal-content {
-      background: white;
-      margin: 10% auto;
-      padding: 20px;
-      width: 300px;
-      border-radius: 5px;
-    }
-    .leaderboard {
-      margin: 20px auto;
-      width: 500px;
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-    }
   </style>
 </head>
 <body>
-  <!-- Никнейм модалка -->
-  <div id="nicknameModal" class="modal" style="display: block;">
-    <div class="modal-content">
-      <h2>Введите ваш никнейм</h2>
-      <input type="text" id="nicknameInput" placeholder="Nickname" />
-      <button id="saveNickname">Сохранить</button>
-    </div>
-  </div>
-
-  <!-- Основной интерфейс -->
-  <div id="mainInterface" style="display: none;">
-    <h1>Online Chess Game</h1>
-    <button id="showLeaderboard">Таблица рейтинга</button>
-    <input type="text" id="roomInput" placeholder="Enter room ID" />
-    <button id="joinRoom">Join Room</button>
-    <div id="board"></div>
-  </div>
-
-  <!-- Таблица лидеров модалка -->
-  <div id="leaderboardModal" class="modal">
-    <div class="modal-content leaderboard">
-      <h2>Топ 10 игроков</h2>
-      <table id="leaderboardTable">
-        <thead>
-          <tr>
-            <th>Игрок</th>
-            <th>Победы</th>
-            <th>Всего игр</th>
-            <th>% побед</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <button id="closeLeaderboard">Закрыть</button>
-    </div>
-  </div>
+  <h1>Online Chess Game</h1>
+  <input type="text" id="roomInput" placeholder="Enter room ID" />
+  <button id="joinRoom">Join Room</button>
+  <div id="board"></div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -86,67 +26,18 @@
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
-    let playerColor = null;
-    let playerNickname = '';
+    let playerColor = null; // 'white' или 'black'
     const game = new Chess();
 
-    // Элементы интерфейса
-    const nicknameModal = document.getElementById('nicknameModal');
-    const nicknameInput = document.getElementById('nicknameInput');
-    const saveNicknameBtn = document.getElementById('saveNickname');
-    const mainInterface = document.getElementById('mainInterface');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
-    const showLeaderboardBtn = document.getElementById('showLeaderboard');
-    const leaderboardModal = document.getElementById('leaderboardModal');
-    const leaderboardTable = document.getElementById('leaderboardTable').querySelector('tbody');
-    const closeLeaderboardBtn = document.getElementById('closeLeaderboard');
 
-    // Сохранить никнейм
-    saveNicknameBtn.onclick = () => {
-      playerNickname = nicknameInput.value.trim();
-      if (!playerNickname) return alert('Введите никнейм');
-      
-      socket.emit('setNickname', playerNickname);
-      nicknameModal.style.display = 'none';
-      mainInterface.style.display = 'block';
-    };
-
-    // Показать таблицу лидеров
-    showLeaderboardBtn.onclick = () => {
-      socket.emit('getLeaderboard');
-    };
-
-    // Закрыть таблицу
-    closeLeaderboardBtn.onclick = () => {
-      leaderboardModal.style.display = 'none';
-    };
-
-    // Обработка таблицы лидеров
-    socket.on('leaderboardData', (data) => {
-      leaderboardTable.innerHTML = '';
-      data.forEach(player => {
-        const winPercentage = player.totalGames > 0 
-          ? (player.wins / player.totalGames * 100).toFixed(2) 
-          : '0.00';
-          
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${player.nickname}</td>
-          <td>${player.wins}</td>
-          <td>${player.totalGames}</td>
-          <td>${winPercentage}%</td>
-        `;
-        leaderboardTable.appendChild(row);
-      });
-      leaderboardModal.style.display = 'block';
-    });
-
-    // Инициализация доски
     function initBoard() {
+      // очищаем контейнер доски
       const boardContainer = document.getElementById('board');
       boardContainer.innerHTML = '';
 
+      // создаём новую доску
       window.board = Chessboard('board', {
         draggable: true,
         orientation: playerColor,
@@ -166,29 +57,13 @@
     function handleMove(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
       if (!move) return 'snapback';
-      
       window.board.position(game.fen());
       socket.emit('move', {
         roomId: currentRoom,
         move: { from: source, to: target }
       });
-
-      // Проверка конца игры
-      if (game.isGameOver()) {
-        let result = 'draw';
-        if (game.isCheckmate()) {
-          result = playerColor;
-          socket.emit('gameOver', {
-            roomId: currentRoom,
-            winner: playerNickname,
-            loser: currentRoomPlayers.find(p => p.id !== socket.id)?.nickname
-          });
-        }
-        alert(`Game Over! Result: ${result}`);
-      }
     }
 
-    // Присоединение к комнате
     joinRoomBtn.onclick = () => {
       const room = roomInput.value.trim();
       if (!room) return alert('Enter room ID');
@@ -196,11 +71,9 @@
       socket.emit('joinRoom', room);
     };
 
-    socket.on('roomUpdate', (players) => {
-      currentRoomPlayers = players;
+    socket.on('roomUpdate', players => {
       const myId = socket.id;
-      const idx = players.findIndex(p => p.id === myId);
-      
+      const idx = players.indexOf(myId);
       if (idx === 0) playerColor = 'white';
       else if (idx === 1) playerColor = 'black';
       else {
