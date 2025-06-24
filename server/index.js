@@ -2,10 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-
 const app = express();
-
-// Разрешаем CORS только для фронтенда
 const allowedOrigin = 'https://chess-online-one.vercel.app';
 
 app.use(cors({
@@ -37,12 +34,12 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = [];
     rooms[roomId].push(socket.id);
-    console.log(`📥 ${socket.id} joined room ${roomId}`);
+    console.log(📥 ${socket.id} joined room ${roomId});
     io.to(roomId).emit('roomUpdate', rooms[roomId]);
   });
 
   socket.on('move', ({ roomId, move }) => {
-    console.log(`♟ Move in room ${roomId}:`, move);
+    console.log(♟ Move in room ${roomId}:, move);
     socket.to(roomId).emit('move', move);
   });
 
@@ -57,5 +54,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
+  console.log(🚀 Server listening on port ${PORT});
 });
