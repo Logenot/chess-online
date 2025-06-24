@@ -33,16 +33,17 @@
     const joinRoomBtn = document.getElementById('joinRoom');
 
     function initBoard() {
-      // Если доска уже была, перерисуем её с новым orientation и колбэками
-      if (window.board) window.board.destroy();
+      // очищаем контейнер доски
+      const boardContainer = document.getElementById('board');
+      boardContainer.innerHTML = '';
 
+      // создаём новую доску
       window.board = Chessboard('board', {
         draggable: true,
         orientation: playerColor,
         position: 'start',
         pieceTheme: piece => `img/chesspieces/${piece}.png`,
         onDragStart: (source, piece) => {
-          // Запретить перетаскивать чужие фигуры
           const isWhitePiece = piece.startsWith('w');
           if ((playerColor === 'white' && !isWhitePiece) ||
               (playerColor === 'black' && isWhitePiece)) {
@@ -71,20 +72,18 @@
     };
 
     socket.on('roomUpdate', players => {
-      // players — массив socket.id участников, в порядке подключения
       const myId = socket.id;
       const idx = players.indexOf(myId);
       if (idx === 0) playerColor = 'white';
       else if (idx === 1) playerColor = 'black';
       else {
-        playerColor = null; // зритель или более 2 участников
+        playerColor = null;
         alert('Комната заполнена — вы в режиме наблюдения');
       }
       initBoard();
     });
 
     socket.on('move', ({ from, to }) => {
-      // Обновляем состояние игры и доски
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
     });
