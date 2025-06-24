@@ -72,10 +72,9 @@
     let currentRoom;
     let playerColor = null;
     let nickname = '';
-    let playersInfo = []; // [{id, nickname}]
     const game = new Chess();
 
-    // DOM элемент
+    // DOM elements
     const lobbyDiv = document.getElementById('lobby');
     const nicknameInput = document.getElementById('nicknameInput');
     const roomInput = document.getElementById('roomInput');
@@ -91,7 +90,7 @@
     const lbBody = document.querySelector('#leaderboardTable tbody');
     const closeLbBtn = document.getElementById('closeLbBtn');
 
-    // Обработчик Join Room
+    // Join Room
     joinRoomBtn.onclick = () => {
       nickname = nicknameInput.value.trim();
       if (!nickname) return alert('Введите никнейм');
@@ -101,11 +100,13 @@
       socket.emit('joinRoom', { roomId: room, nickname });
     };
 
-    // Показ таблицы рейтинга
+    // Leaderboard
     showLbBtn.onclick = async () => {
       try {
-        const res = await fetch('https://chess-online-production-79dd.up.railway.app/leaderboard', { credentials: 'include' });
-        const data = await res.json();
+        const res = await fetch('https://chess-online-production-79dd.up.railway.app/leaderboard', {
+          credentials: 'include'
+        });
+        const data = await res.json(); // [{nickname, wins, totalGames}]
         lbBody.innerHTML = '';
         data.slice(0,10).forEach((p, i) => {
           const tr = document.createElement('tr');
@@ -120,7 +121,7 @@
     };
     closeLbBtn.onclick = () => lbOverlay.style.visibility = 'hidden';
 
-    // Возврат в лобби
+    // Return to lobby
     returnBtn.onclick = () => {
       overlay.style.visibility = 'hidden';
       lbOverlay.style.visibility = 'hidden';
@@ -130,7 +131,7 @@
       game.reset();
     };
 
-    // Инициализация доски
+    // Initialize or reset board
     function initBoard() {
       boardDiv.innerHTML = '';
       window.board = Chessboard('board', {
@@ -146,7 +147,7 @@
       });
     }
 
-    // Проверка окончания игры
+    // Check game over
     function checkGameOver() {
       if (!game.game_over()) return;
       let text;
@@ -159,18 +160,25 @@
       }
       resultText.textContent = text;
       overlay.style.visibility = 'visible';
+      const me = socket.id;
+      const opponent = playersInfo.find(p => p.id !== me);
+      const winnerNick = game.in_checkmate()
+        ? (game.turn() === playerColor[0] ? opponent.nickname : nickname)
+        : null;
+      const loserNick = game.in_checkmate()
+        ? (game.turn() === playerColor[0] ? nickname : opponent.nickname)
+        : null;
 
-      // Отправляем результат на сервер
-      if (game.in_checkmate()) {
-        const me = socket.id;
-        const opp = playersInfo.find(p => p.id !== me);
-        const winner = (game.turn() === playerColor[0]) ? opp.nickname : nickname;
-        const loser  = (game.turn() === playerColor[0]) ? nickname : opp.nickname;
-        socket.emit('gameOver', { roomId: currentRoom, winner, loser });
+      if (winnerNick && loserNick) {
+        socket.emit('gameOver', {
+          roomId: currentRoom,
+          winner:   winnerNick,
+          loser:    loserNick
+        });
       }
     }
 
-    // Обработка хода
+    // Handle move
     function handleMove(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
       if (!move) return 'snapback';
@@ -179,13 +187,13 @@
       checkGameOver();
     }
 
-    // Событие обновления комнаты
+    // Socket events
     socket.on('roomUpdate', info => {
-      // info.players — [{ id, nickname }]
-      playersInfo = info.players;
-      const idx = playersInfo.findIndex(p => p.id === socket.id);
-      if (idx === 0) playerColor = 'white';
-      else if (idx === 1) playerColor = 'black';
+      // info: { players: [...], playerColors: {socketId: color} }
+      const { players } = info;
+      const idx = players.indexOf(socket.id);
+      if (idx===0) playerColor='white';
+      else if (idx===1) playerColor='black';
       else {
         playerColor = null;
         alert('Комната заполнена — вы в режиме наблюдения');
@@ -195,7 +203,6 @@
       initBoard();
     });
 
-    // Событие хода от соперника
     socket.on('move', ({ from, to }) => {
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
