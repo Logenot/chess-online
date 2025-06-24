@@ -171,7 +171,13 @@
       
       // Активируем доску после присоединения к комнате
       boardEl.classList.remove('disabled');
-      board.setDraggable(true);
+      board.destroy();
+      board = Chessboard('board', {
+        draggable: true, // Теперь разрешено перемещение
+        position: game.fen(),
+        onDrop: handleMove,
+        pieceTheme: piece => `img/chesspieces/${piece}.png`
+      });
     };
 
     function handleMove(source, target) {
