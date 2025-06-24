@@ -21,7 +21,6 @@ const io = new Server(server, {
 
 // ---- Состояние комнат и пользователей ----
 const rooms = {};
-// Словарь для рейтинга
 const leaderboard = {};
 function recordResult(winner, loser) {
   [winner, loser].forEach(nick => {
@@ -53,12 +52,14 @@ io.on('connection', (socket) => {
 
   socket.on('joinRoom', ({ roomId, nickname }) => {
     socket.data.nickname = nickname;
-    socket.join(roomId);
+
     if (!rooms[roomId]) rooms[roomId] = [];
-    rooms[roomId].push(socket.id);
+    rooms[roomId].push({ id: socket.id, nickname }); // 👈 Сохраняем как объект
+    socket.join(roomId);
+
     console.log(`📥 ${socket.id} (${nickname}) joined room ${roomId}`);
     io.to(roomId).emit('roomUpdate', {
-      players: rooms[roomId],
+      players: rooms[roomId], // 👈 Теперь отправляется массив объектов
     });
   });
 
@@ -67,7 +68,6 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('move', move);
   });
 
-  // Приходит от клиента по окончании игры
   socket.on('gameOver', ({ roomId, winner, loser }) => {
     console.log(`🏁 Game over in room ${roomId}. Winner: ${winner}, Loser: ${loser}`);
     recordResult(winner, loser);
@@ -76,12 +76,15 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('❌ User disconnected:', socket.id);
     for (const roomId in rooms) {
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-      io.to(roomId).emit('roomUpdate', { players: rooms[roomId] });
+      rooms[roomId] = rooms[roomId].filter(player => player.id !== socket.id);
+      io.to(roomId).emit('roomUpdate', {
+        players: rooms[roomId],
+      });
     }
   });
 });
 
+// ---- Запуск ----
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);

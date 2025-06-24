@@ -181,16 +181,20 @@
 
     // Событие обновления комнаты
     socket.on('roomUpdate', info => {
-      // info.players — [{ id, nickname }]
+      // Теперь приходят объекты [{ id, nickname }]
       playersInfo = info.players;
+
       const idx = playersInfo.findIndex(p => p.id === socket.id);
-      if (idx === 0) playerColor = 'white';
-      else if (idx === 1) playerColor = 'black';
-      else {
+      if (idx === 0) {
+        playerColor = 'white';
+      } else if (idx === 1) {
+        playerColor = 'black';
+      } else {
         playerColor = null;
         alert('Комната заполнена — вы в режиме наблюдения');
         return;
       }
+
       lobbyDiv.style.display = 'none';
       initBoard();
     });
