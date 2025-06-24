@@ -26,19 +26,32 @@
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
     let currentRoom;
+    let playerColor = null; // 'white' или 'black'
     const game = new Chess();
+
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function initBoard() {
+      // Если доска уже была, перерисуем её с новым orientation и колбэками
+      if (window.board) window.board.destroy();
+
       window.board = Chessboard('board', {
         draggable: true,
+        orientation: playerColor,
         position: 'start',
+        pieceTheme: piece => `img/chesspieces/${piece}.png`,
+        onDragStart: (source, piece) => {
+          // Запретить перетаскивать чужие фигуры
+          const isWhitePiece = piece.startsWith('w');
+          if ((playerColor === 'white' && !isWhitePiece) ||
+              (playerColor === 'black' && isWhitePiece)) {
+            return false;
+          }
+        },
         onDrop: handleMove,
-        // Рабочие ссылки на изображения фигур
-        pieceTheme: piece => `img/chesspieces/${piece}.png`
       });
-    });
+    }
 
     function handleMove(source, target) {
       const move = game.move({ from: source, to: target, promotion: 'q' });
@@ -57,7 +70,21 @@
       socket.emit('joinRoom', room);
     };
 
+    socket.on('roomUpdate', players => {
+      // players — массив socket.id участников, в порядке подключения
+      const myId = socket.id;
+      const idx = players.indexOf(myId);
+      if (idx === 0) playerColor = 'white';
+      else if (idx === 1) playerColor = 'black';
+      else {
+        playerColor = null; // зритель или более 2 участников
+        alert('Комната заполнена — вы в режиме наблюдения');
+      }
+      initBoard();
+    });
+
     socket.on('move', ({ from, to }) => {
+      // Обновляем состояние игры и доски
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
     });
