@@ -1,67 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Online Chess Game</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
-  />
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px }
-    #board { width: 400px; margin: 20px auto }
-    #overlay, #leaderboardOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7); color: white;
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; font-size: 1.5rem; visibility: hidden;
-    }
-    button { padding: 10px 20px; margin: 5px; font-size: 1rem; }
-    #leaderboardTable { background: white; color: black; border-collapse: collapse; width: 80%; max-width: 600px; margin: 0 auto; }
-    #leaderboardTable th, #leaderboardTable td { border: 1px solid #ccc; padding: 8px; }
-    #leaderboardTable th { background: #eee; }
-  </style>
+<meta charset="UTF-8" />
+<title>Online Chess Game</title>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+/>
+<style>
+  body { font-family: sans-serif; text-align: center; padding: 20px }
+  #board { width: 400px; margin: 20px auto }
+  #overlay, #leaderboardOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); color: white;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; font-size: 1.5rem; visibility: hidden;
+  }
+  #overlay button, #leaderboardOverlay button {
+    margin-top: 20px; padding: 10px 20px; font-size: 1rem;
+    cursor: pointer;
+  }
+  #lobby { margin-bottom: 20px }
+  #leaderboardTable {
+    background: white; color: black; border-collapse: collapse;
+    width: 80%; max-width: 600px;
+  }
+  #leaderboardTable th, #leaderboardTable td {
+    border: 1px solid #ccc; padding: 8px;
+  }
+  #leaderboardTable th { background: #eee; }
+</style>
 </head>
 <body>
   <h1>Online Chess Game</h1>
-
   <div id="lobby">
-    <input type="text" id="nicknameInput" placeholder="Введите никнейм" />
-    <button id="findOpponent">Найти соперника</button>
-    <button id="showLeaderboard">Показать рейтинг</button>
+    <input type="text" id="nicknameInput" placeholder="Enter your nickname" />
+    <input type="text" id="roomInput" placeholder="Enter room ID" />
+    <button id="joinRoom">Join Room</button>
+    <button id="showLeaderboard">Show Leaderboard</button>
   </div>
-
   <div id="board"></div>
 
+  <!-- Game result overlay -->
   <div id="overlay">
     <div id="resultText"></div>
-    <button id="returnBtn">Вернуться в лобби</button>
+    <button id="returnBtn">Return to Lobby</button>
   </div>
 
+  <!-- Leaderboard overlay -->
   <div id="leaderboardOverlay">
-    <h2>Топ-10 игроков</h2>
+    <h2>Top 10 Players</h2>
     <table id="leaderboardTable">
       <thead>
-        <tr><th>#</th><th>Ник</th><th>Wins</th><th>Win %</th></tr>
+        <tr><th>Rank</th><th>Nickname</th><th>Wins</th><th>Win %</th></tr>
       </thead>
       <tbody></tbody>
     </table>
-    <button id="closeLbBtn">Закрыть</button>
+    <button id="closeLbBtn">Close</button>
   </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script>
     const socket = io('https://chess-online-production-79dd.up.railway.app');
-    let currentRoom, playerColor, nickname, playersInfo;
+    let currentRoom;
+    let playerColor = null;
+    let nickname = '';
+    let playersInfo = [];
     const game = new Chess();
 
-    // DOM
-    const nickInput = document.getElementById('nicknameInput');
-    const findBtn = document.getElementById('findOpponent');
+    const lobbyDiv = document.getElementById('lobby');
+    const nicknameInput = document.getElementById('nicknameInput');
+    const roomInput = document.getElementById('roomInput');
+    const joinRoomBtn = document.getElementById('joinRoom');
     const showLbBtn = document.getElementById('showLeaderboard');
-    const lobby = document.getElementById('lobby');
     const boardDiv = document.getElementById('board');
     const overlay = document.getElementById('overlay');
     const resultText = document.getElementById('resultText');
@@ -70,82 +84,116 @@
     const lbBody = document.querySelector('#leaderboardTable tbody');
     const closeLbBtn = document.getElementById('closeLbBtn');
 
-    findBtn.onclick = () => {
-      nickname = nickInput.value.trim();
+    // Кнопки
+    joinRoomBtn.onclick = () => {
+      nickname = nicknameInput.value.trim();
       if (!nickname) return alert('Введите никнейм');
-      socket.emit('findMatch', { nickname });
-      findBtn.disabled = true;
-      findBtn.textContent = 'Ищем…';
+      const room = roomInput.value.trim();
+      if (!room) return alert('Введите ID комнаты');
+      currentRoom = room;
+      socket.emit('joinRoom', { roomId: room, nickname });
     };
-
     showLbBtn.onclick = async () => {
       try {
         const res = await fetch('https://chess-online-production-79dd.up.railway.app/leaderboard', { credentials: 'include' });
         const data = await res.json();
         lbBody.innerHTML = '';
-        data.slice(0,10).forEach((p,i) => {
-          const rate = p.totalGames ? (p.wins/p.totalGames*100).toFixed(1) : '0.0';
-          lbBody.innerHTML += `<tr><td>${i+1}</td><td>${p.nickname}</td><td>${p.wins}</td><td>${rate}%</td></tr>`;
+        data.slice(0,10).forEach((p, i) => {
+          const tr = document.createElement('tr');
+          const winRate = p.totalGames ? ((p.wins / p.totalGames) * 100).toFixed(1) : '0.0';
+          tr.innerHTML = `<td>${i + 1}</td><td>${p.nickname}</td><td>${p.wins}</td><td>${winRate}%</td>`;
+          lbBody.append(tr);
         });
         lbOverlay.style.visibility = 'visible';
-      } catch {
-        alert('Не удалось загрузить рейтинг');
+      } catch (e) {
+        alert('Не удалось загрузить таблицу рейтинга');
       }
     };
     closeLbBtn.onclick = () => lbOverlay.style.visibility = 'hidden';
-    returnBtn.onclick = () => location.reload(); // перезагрузить страницу, чтобы сбросить состояние
-
-    // По матчу
-    socket.on('matchFound', ({ roomId, color, players }) => {
-      currentRoom = roomId;
-      playerColor = color;
-      playersInfo = players;
-      lobby.style.display = 'none';
-      initBoard();
-    });
-
+    returnBtn.onclick = () => {
+      overlay.style.visibility = 'hidden';
+      lbOverlay.style.visibility = 'hidden';
+      lobbyDiv.style.display = 'block';
+      boardDiv.innerHTML = '';
+      playerColor = null;
+      game.reset();
+    };
+  
     // Инициализация доски
     function initBoard() {
       boardDiv.innerHTML = '';
-      Chessboard('board', {
+      window.board = Chessboard('board', {
         draggable: true,
         orientation: playerColor,
         position: 'start',
-        onDragStart: (s,p) => {
-          const isW = p.startsWith('w');
-          if ((playerColor==='white' && !isW) || (playerColor==='black' && isW)) return false;
+        pieceTheme: piece => `img/chesspieces/${piece}.png`,
+        onDragStart: (source, piece) => {
+          const isWhite = piece.startsWith('w');
+          if ((playerColor === 'white' && !isWhite) || (playerColor === 'black' && isWhite)) {
+            return false;
+          }
         },
         onDrop: handleMove,
       });
     }
 
-    function checkGameOver(showOnly=false) {
+    // Проверка конца игры
+    function checkGameOver(showOverlayOnly = false) {
       if (!game.game_over()) return;
-      let txt = game.in_checkmate()
-        ? (game.turn()===playerColor[0] ? 'Мат! Вы проиграли.' : 'Мат! Вы победили!')
-        : 'Ничья.';
-      resultText.textContent = txt;
+
+      let text;
+      if (game.in_checkmate()) {
+        text = game.turn() === playerColor[0]
+            ? 'Мат! Вы проиграли.'
+            : 'Мат! Вы победили!';
+      } else {
+        text = 'Ничья.';
+      }
+      resultText.textContent = text;
       overlay.style.visibility = 'visible';
-      if (!showOnly && game.in_checkmate()) {
+
+      // Отправка результата только если это наш ход
+      if (!showOverlayOnly && game.in_checkmate()) {
         const me = socket.id;
-        const opp = playersInfo.find(p=>p.id!==me);
-        const winner = (game.turn()===playerColor[0]) ? opp.nickname : nickname;
-        const loser  = (game.turn()===playerColor[0]) ? nickname : opp.nickname;
+        const opp = playersInfo.find(p => p.id !== me);
+        const winner = (game.turn() === playerColor[0]) ? opp.nickname : nickname;
+        const loser = (game.turn() === playerColor[0]) ? nickname : opp.nickname;
+
         socket.emit('gameOver', { roomId: currentRoom, winner, loser });
       }
     }
 
-    function handleMove(src, tgt) {
-      const mv = game.move({ from: src, to: tgt, promotion: 'q' });
-      if (!mv) return 'snapback';
-      Chessboard('board').position(game.fen());
-      socket.emit('move', { roomId: currentRoom, move: mv });
+    // Отправка хода
+    function handleMove(source, target) {
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (!move) return 'snapback';
+      window.board.position(game.fen());
+      socket.emit('move', { roomId: currentRoom, move });
       checkGameOver(false);
     }
 
+    // Событие roomUpdate
+    socket.on('roomUpdate', info => {
+      playersInfo = info.players;
+
+      const idx = playersInfo.findIndex(p => p.id === socket.id);
+      if (idx === 0) {
+        playerColor = 'white';
+      } else if (idx === 1) {
+        playerColor = 'black';
+      } else {
+        playerColor = null;
+        alert('Комната заполнена — вы в режиме наблюдения');
+        return;
+      }
+      lobbyDiv.style.display = 'none';
+      initBoard();
+    });
+
+    // Событие move от соперника
     socket.on('move', ({ from, to }) => {
       game.move({ from, to, promotion: 'q' });
-      Chessboard('board').position(game.fen());
+      window.board.position(game.fen());
       checkGameOver(true);
     });
   </script>
