@@ -8,13 +8,15 @@
   href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
 />
 <style>
-  .image-container {
-      width: 900px;
-      height: 600px;
-      background-image: url("background.jpg");
-      background-size: cover;
-      background-color: rgba(8, 64, 111, 200); /* Синий фон с прозрачностью 30% */
-  }
+    body {
+      background-image: url('background.jpg'); /* Путь к картинке */
+      background-size: cover; /* Растянуть на весь экран */
+      background-position: center; /* Центрировать */
+      background-repeat: no-repeat; /* Не повторять */
+      background-attachment: fixed; /* Фиксированный фон (не скроллится) */
+      margin: 0;
+      height: 100vh; /* На всю высоту экрана */
+    }
   body { font-family: sans-serif; text-align: center; padding: 20px; background-color: rgb(8, 64, 111)}
   #board { width: 400px; margin: 20px auto }
   #gameControls { margin-top: 20px; }
@@ -59,7 +61,6 @@
   <p>&nbsp;</p>
   <p>&nbsp;</p>
   <h1 style="color: white">Online Chess Game</h1>
-  <div class="image-container"></div>
   <div id="lobby">
     <input type="text" id="nicknameInput" placeholder="Enter your nickname" />
     <input type="text" id="roomInput" placeholder="Enter room ID" />
