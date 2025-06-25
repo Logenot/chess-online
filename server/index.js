@@ -90,6 +90,11 @@ io.on('connection', (socket) => {
       io.to(opponentId).emit('joinAutoRoom', roomId);
       socket.emit('joinAutoRoom', roomId);
       
+      // Отправляем обновление состояния комнаты
+      io.to(roomId).emit('roomUpdate', {
+        players: rooms[roomId],
+      });
+      
       console.log(`🤝 Created auto room ${roomId} for ${nickname} and ${opponentNick}`);
     } else {
       // Добавляем в очередь ожидания
