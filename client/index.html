@@ -29,6 +29,11 @@
     border: 1px solid #ccc; padding: 8px;
   }
   #leaderboardTable th { background: #eee; }
+  #findOpponentBtn {
+    margin-left: 10px;
+    background-color: #4CAF50;
+    color: white;
+  }
 </style>
 </head>
 <body>
@@ -37,6 +42,7 @@
     <input type="text" id="nicknameInput" placeholder="Enter your nickname" />
     <input type="text" id="roomInput" placeholder="Enter room ID" />
     <button id="joinRoom">Join Room</button>
+    <button id="findOpponentBtn">Найти противника</button>
     <button id="showLeaderboard">Show Leaderboard</button>
   </div>
   <div id="board"></div>
@@ -75,6 +81,7 @@
     const nicknameInput = document.getElementById('nicknameInput');
     const roomInput = document.getElementById('roomInput');
     const joinRoomBtn = document.getElementById('joinRoom');
+    const findOpponentBtn = document.getElementById('findOpponentBtn');
     const showLbBtn = document.getElementById('showLeaderboard');
     const boardDiv = document.getElementById('board');
     const overlay = document.getElementById('overlay');
@@ -83,6 +90,7 @@
     const lbOverlay = document.getElementById('leaderboardOverlay');
     const lbBody = document.querySelector('#leaderboardTable tbody');
     const closeLbBtn = document.getElementById('closeLbBtn');
+    let isSearching = false;
 
     // Кнопки
     joinRoomBtn.onclick = () => {
@@ -93,6 +101,24 @@
       currentRoom = room;
       socket.emit('joinRoom', { roomId: room, nickname });
     };
+    
+    findOpponentBtn.onclick = () => {
+      nickname = nicknameInput.value.trim();
+      if (!nickname) return alert('Введите никнейм');
+      
+      if (isSearching) {
+        // Отмена поиска
+        socket.emit('cancelSearch');
+        findOpponentBtn.textContent = 'Найти противника';
+        isSearching = false;
+      } else {
+        // Начало поиска
+        socket.emit('findOpponent', { nickname });
+        findOpponentBtn.textContent = 'Отменить поиск';
+        isSearching = true;
+      }
+    };
+    
     showLbBtn.onclick = async () => {
       try {
         const res = await fetch('https://chess-online-production-79dd.up.railway.app/leaderboard', { credentials: 'include' });
@@ -109,6 +135,7 @@
         alert('Не удалось загрузить таблицу рейтинга');
       }
     };
+    
     closeLbBtn.onclick = () => lbOverlay.style.visibility = 'hidden';
     returnBtn.onclick = () => {
       overlay.style.visibility = 'hidden';
@@ -117,6 +144,8 @@
       boardDiv.innerHTML = '';
       playerColor = null;
       game.reset();
+      findOpponentBtn.textContent = 'Найти противника';
+      isSearching = false;
     };
   
     // Инициализация доски
@@ -195,6 +224,14 @@
       game.move({ from, to, promotion: 'q' });
       window.board.position(game.fen());
       checkGameOver(true);
+    });
+    
+    // Автоматическое присоединение к комнате
+    socket.on('joinAutoRoom', (roomId) => {
+      currentRoom = roomId;
+      lobbyDiv.style.display = 'none';
+      findOpponentBtn.textContent = 'Найти противника';
+      isSearching = false;
     });
   </script>
 </body>

@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-
+const waitingPlayers = new Map();
 const app = express();
 
 // Укажите свой фронтенд-домен
@@ -49,6 +49,33 @@ app.get('/leaderboard', (req, res) => {
 // ---- WebSocket логика ----
 io.on('connection', (socket) => {
   console.log('👤 New user connected:', socket.id);
+  socket.on('findOpponent', ({ nickname }) => {
+    socket.data.nickname = nickname;
+  
+    if (waitingPlayers.size > 0) {
+      const [opponentId, opponentNick] = waitingPlayers.entries().next().value;
+      waitingPlayers.delete(opponentId);
+      
+      const roomId = `auto_${Date.now()}`;
+      rooms[roomId] = [
+        { id: opponentId, nickname: opponentNick },
+        { id: socket.id, nickname }
+      ];
+    
+      const opponentSocket = io.sockets.sockets.get(opponentId);
+      opponentSocket.join(roomId);
+      socket.join(roomId);
+    
+      io.to(opponentId).emit('joinAutoRoom', roomId);
+      socket.emit('joinAutoRoom', roomId);
+    } else {
+      waitingPlayers.set(socket.id, nickname);
+    }
+  });
+
+  socket.on('cancelSearch', () => {
+    waitingPlayers.delete(socket.id);
+  });
 
   socket.on('joinRoom', ({ roomId, nickname }) => {
     socket.data.nickname = nickname;
@@ -75,6 +102,9 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('❌ User disconnected:', socket.id);
+    // В обработчике disconnect:
+    socket.on('disconnect', () => {
+      waitingPlayers.delete(socket.id);
     for (const roomId in rooms) {
       rooms[roomId] = rooms[roomId].filter(player => player.id !== socket.id);
       io.to(roomId).emit('roomUpdate', {
